@@ -11,6 +11,7 @@ import java.util.HashMap;
 import com.synload.framework.SynloadFramework;
 import com.synload.videoConverter.SynloadConverter;
 import com.synload.videoConverter.VideoConvertModule;
+import com.synload.videoConverter.converter.models.Video;
 
 public class ConverterThread implements Runnable{
 	@SuppressWarnings("unused")

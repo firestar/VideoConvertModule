@@ -31,7 +31,7 @@ import com.synload.videoConverter.SynloadConverter;
 import com.synload.videoConverter.Users;
 import com.synload.videoConverter.VideoConvertModule;
 import com.synload.videoConverter.converter.Converter;
-import com.synload.videoConverter.converter.Video;
+import com.synload.videoConverter.converter.models.Video;
 
 public class HTTPListener {
 	private static final MultipartConfigElement MULTI_PART_CONFIG = 
@@ -102,15 +102,15 @@ public class HTTPListener {
 								Video d = new Video (
 									part.getSubmittedFileName(),
 									part.getSize(),
-									request.getParameter("target"),
 									part,
-									params
+									account
 								);
-								d.setAccount(account);
-								if(baseRequest.getParameterMap().containsKey("status"))
+								/*if(baseRequest.getParameterMap().containsKey("status"))
 									d.setStatusURL(request.getParameter("status"));
 								if(baseRequest.getParameterMap().containsKey("cancel"))
 									d.setCancelURL(request.getParameter("cancel"));
+								if(baseRequest.getParameterMap().containsKey("upload"))
+									d.setUploadURL(request.getParameter("upload"));*/
 								System.out.println("file building!");
 								d.buildVideo();
 								entry.put("file", part.getSubmittedFileName());
@@ -202,15 +202,15 @@ public class HTTPListener {
 								Video d = new Video (
 									part.getSubmittedFileName(),
 									part.getSize(),
-									request.getParameter("target"),
 									part,
-									params
+									account
 								);
-								d.setAccount(account);
-								if(baseRequest.getParameterMap().containsKey("status"))
+								/*if(baseRequest.getParameterMap().containsKey("status"))
 									d.setStatusURL(request.getParameter("status"));
 								if(baseRequest.getParameterMap().containsKey("cancel"))
 									d.setCancelURL(request.getParameter("cancel"));
+								if(baseRequest.getParameterMap().containsKey("upload"))
+									d.setUploadURL(request.getParameter("upload"));*/
 								System.out.println("file building!");
 								d.buildVideo();
 								entry.put("file", part.getSubmittedFileName());
@@ -250,7 +250,7 @@ public class HTTPListener {
 			if(account!=null){
 		        Video v = this.getVideoById(uRI[2]);
 		        if(v.getAccount().getId()==account.getId()){
-		        	HTTPRouting.openFile( v.getVideoFile(), response, baseRequest);
+		        	HTTPRouting.openFile( v.getSourceFile(), response, baseRequest);
 		        }
 			}
 		}
@@ -289,10 +289,8 @@ public class HTTPListener {
 			        			time = hours+":"+minutes+":"+seconds;
 			        		}
 			        	}
-			        	if((new File(VideoConvertModule.prop.getProperty("uploadPath")+v.getTemp())).exists()){
-			        		p = Runtime.getRuntime().exec(VideoConvertModule.prop.getProperty("ffmpeg")+" -i "+VideoConvertModule.prop.getProperty("uploadPath")+v.getTemp()+" -threads 16 -vf scale=320:-1 -ss "+time+" -f image2 -vframes 1 -");
-			        	}else if((new File(v.getVideoFile())).exists()){
-			        		p = Runtime.getRuntime().exec(VideoConvertModule.prop.getProperty("ffmpeg")+ " -i "+v.getVideoFile()+" -threads 16 -vf scale=320:-1 -ss "+time+" -f image2 -vframes 1 -");
+			        	if((new File(VideoConvertModule.prop.getProperty("uploadPath")+v.getSourceFile())).exists()){
+			        		p = Runtime.getRuntime().exec(VideoConvertModule.prop.getProperty("ffmpeg")+" -i "+VideoConvertModule.prop.getProperty("uploadPath")+v.getSourceFile()+" -threads 16 -vf scale=320:-1 -ss "+time+" -f image2 -vframes 1 -");
 			        	}else{
 			        		response.setContentType("text/html;charset=utf-8");
 					        response.setStatus(HttpServletResponse.SC_OK);

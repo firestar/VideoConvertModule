@@ -14,6 +14,7 @@ import java.util.regex.PatternSyntaxException;
 
 import com.synload.framework.SynloadFramework;
 import com.synload.videoConverter.VideoConvertModule;
+import com.synload.videoConverter.converter.models.Video;
 
 public class ConverterProcessing{
 	public static String getFPS(Video video){
@@ -208,7 +209,7 @@ public class ConverterProcessing{
 			}
 		}
 	}
-	public static void getH264(Video video, String mDataLine){
+	/*public static void getH264(Video video, String mDataLine){
 		if(!video.isH264()){
 			Pattern regex = Pattern.compile("h264");
 			Matcher regexMatcher = regex.matcher(mDataLine);
@@ -223,9 +224,9 @@ public class ConverterProcessing{
 			} else {
 			}
 		}
-	}
+	}*/
 	public static void removeSubs(Video video) throws IOException{
-		String cmd = VideoConvertModule.prop.getProperty("ffmpeg")+" -i "+VideoConvertModule.prop.getProperty("uploadPath")+video.getTemp()+" -sn -vcodec copy -acodec copy "+VideoConvertModule.prop.getProperty("uploadPath")+video.getTemp()+".mkv";
+		String cmd = VideoConvertModule.prop.getProperty("ffmpeg")+" -i "+VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()+" -sn -vcodec copy -acodec copy "+VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()+".mkv";
 		ProcessBuilder builder = new ProcessBuilder(cmd.split(" "));
 		builder.redirectErrorStream(true);
 		Process pr = builder.start();
@@ -243,8 +244,8 @@ public class ConverterProcessing{
 		br.close();
 		isr.close();
 		is.close();
-		(new File(VideoConvertModule.prop.getProperty("uploadPath")+video.getTemp())).delete();
-		(new File(VideoConvertModule.prop.getProperty("uploadPath")+video.getTemp()+".mkv")).renameTo(new File(VideoConvertModule.prop.getProperty("uploadPath")+video.getTemp()));
+		(new File(VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile())).delete();
+		(new File(VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()+".mkv")).renameTo(new File(VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()));
 	}
 	public static String cmdExec(String cmdLine) {
 	    String output = "";

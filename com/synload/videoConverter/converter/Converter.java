@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.synload.framework.SynloadFramework;
+import com.synload.videoConverter.converter.models.Video;
 
 public class Converter{
 	public Thread cThread;

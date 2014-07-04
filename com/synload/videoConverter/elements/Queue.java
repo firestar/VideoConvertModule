@@ -7,8 +7,8 @@ import com.synload.framework.handlers.Request;
 import com.synload.framework.handlers.Response;
 import com.synload.framework.ws.WSHandler;
 import com.synload.videoConverter.converter.Converter;
-import com.synload.videoConverter.converter.Video;
 import com.synload.videoConverter.converter.VideoModel;
+import com.synload.videoConverter.converter.models.Video;
 
 public class Queue extends Response {
 	public List<Object> queue = new ArrayList<Object>();

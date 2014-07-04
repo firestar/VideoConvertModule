@@ -4,9 +4,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
 import org.eclipse.jetty.server.Request;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.synload.framework.users.Authentication;
@@ -15,7 +18,7 @@ import com.synload.videoConverter.SynloadConverter;
 import com.synload.videoConverter.Users;
 import com.synload.videoConverter.VideoConvertModule;
 import com.synload.videoConverter.converter.Converter;
-import com.synload.videoConverter.converter.Video;
+import com.synload.videoConverter.converter.models.Video;
 
 public class AdminListener {
 	public void sendAdmin(String target, Request baseRequest, HttpServletRequest request, 

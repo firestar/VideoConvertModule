@@ -7,8 +7,8 @@ import com.synload.framework.handlers.Request;
 import com.synload.framework.handlers.Response;
 import com.synload.framework.ws.WSHandler;
 import com.synload.videoConverter.SynloadConverter;
-import com.synload.videoConverter.converter.Video;
 import com.synload.videoConverter.converter.VideoModel;
+import com.synload.videoConverter.converter.models.Video;
 
 public class History extends Response {
 	public List<VideoModel> history = new ArrayList<VideoModel>();

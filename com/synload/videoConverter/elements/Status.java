@@ -10,7 +10,7 @@ import com.synload.framework.ws.WSHandler;
 import com.synload.videoConverter.SynloadConverter;
 import com.synload.videoConverter.VideoConvertModule;
 import com.synload.videoConverter.converter.Converter;
-import com.synload.videoConverter.converter.Video;
+import com.synload.videoConverter.converter.models.Video;
 
 public class Status extends Response {
 	public List<String> history = new ArrayList<String>();

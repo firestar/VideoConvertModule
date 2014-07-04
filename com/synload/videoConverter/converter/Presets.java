@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.util.Hashtable;
 
 import com.synload.videoConverter.VideoConvertModule;
+import com.synload.videoConverter.converter.models.Video;
 
 public class Presets{
 	public static String vp84k(Video video, String extra){

@@ -1,10 +1,14 @@
 package com.synload.videoConverter;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -124,7 +128,19 @@ public class VideoConvertModule extends Addon {
 			System.out.println("[VC] Users found!");
 		}
 	}
-	
+	public static String objectToString(Object obj) throws IOException{
+		ByteArrayOutputStream bo = new ByteArrayOutputStream();
+		ObjectOutputStream so = new ObjectOutputStream(bo);
+		so.writeObject(obj);
+		so.flush();
+		return bo.toString();
+	}
+	public static Object stringToObject(String obj) throws IOException, ClassNotFoundException{
+		byte b[] = obj.getBytes(); 
+		ByteArrayInputStream bi = new ByteArrayInputStream(b);
+		ObjectInputStream si = new ObjectInputStream(bi);
+		return si.readObject();
+	}
 	public void verifyExists(String exec) throws Exception{
 		if(!(new File(exec)).exists()){
 			throw new Exception("[VC] Cannot find the executable "+exec);

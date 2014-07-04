@@ -23,7 +23,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import com.synload.framework.SynloadFramework;
 import com.synload.videoConverter.SynloadConverter;
 import com.synload.videoConverter.converter.Presets;
-import com.synload.videoConverter.converter.Video;
+import com.synload.videoConverter.converter.models.Video;
 
 
 @SuppressWarnings("deprecation")
