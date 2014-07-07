@@ -454,6 +454,7 @@ public class HTTPListener {
         json = ow.writeValueAsString(currents);
 		response.getWriter().println(json);
 	}
+	
 	public void sendStatusMore(String target, Request baseRequest, HttpServletRequest request, 
 			HttpServletResponse response, String[] uRI) throws IOException{
 		response.setContentType("text/html;charset=utf-8");
@@ -489,27 +490,8 @@ public class HTTPListener {
         baseRequest.setHandled(true);
         HTTPRouting.openFile("/resources/favicon.ico", response, baseRequest);
 	}
-	public Video getVideoById(String r){
-		List<Video> queueTemp = new ArrayList<Video>(Converter.queue);
-		for( Video s : queueTemp){
-        	if(s.getId().equals(r)){
-        		return s;
-        	}
-        }
-		queueTemp = new ArrayList<Video>(SynloadConverter.history);
-		for( Video s : queueTemp){
-        	if(s.getId().equals(r)){
-        		return s;
-        	}
-        }
-		for(Converter c: VideoConvertModule.workers){
-			if(c.current.containsKey("video")){
-				Video d = (Video)c.current.get("video");
-				if(d.getId().equals(r)){
-	        		return d;
-	        	}
-			}
-		}
-		return null;
+	
+	public Video getVideoById(String id){
+		return Video.getById(Long.valueOf(id));
 	}
 }

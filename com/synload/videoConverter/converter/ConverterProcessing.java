@@ -8,6 +8,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -142,18 +145,17 @@ public class ConverterProcessing{
 		}
 		return "0";
 	}
-	public static void extractSubs(Video video,String mDataLine){
-		ArrayList<String> out = video.getSubtitles();
+	public static void extractSubs(Video video){
+		List<String> tracks = new ArrayList<String>();
 		try {
-			Pattern regex = Pattern.compile("subtitles");
-			Matcher regexMatcher = regex.matcher(mDataLine);
-			if (regexMatcher.find()) {
-				regex = Pattern.compile("Track ID ([0-9]+)");
-				regexMatcher = regex.matcher(mDataLine);
-				if (regexMatcher.find()) {
+			Pattern regex = Pattern.compile("Stream #([0-9]+)\\.([0-9]+)(?:\\([a-z]+\\)|): Subtitle: (.*?)\r\n    Metadata:\r\n      title([ ]+): (.*?)\r");
+			Matcher regexMatcher = regex.matcher(video.getData());
+			while (regexMatcher.find()) {
+				try {
+					HashMap<String, String> commands = new HashMap<String,String>();
 					System.out.println("Found Subtitles");
 					String filename = video.randomString();
-					String cmd = VideoConvertModule.prop.getProperty("mkvextract")+" tracks "+VideoConvertModule.prop.getProperty("uploadPath")+video.getTemp()+" "+regexMatcher.group(1)+":"+VideoConvertModule.prop.getProperty("uploadPath")+filename+".ass";
+					String cmd = VideoConvertModule.prop.getProperty("mkvextract")+" tracks "+VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()+" "+regexMatcher.group(2)+":"+VideoConvertModule.prop.getProperty("uploadPath")+filename+".ass";
 					ProcessBuilder builder = new ProcessBuilder(cmd.split(" "));
 					builder.redirectErrorStream(true);
 					Process pr = builder.start();
@@ -167,7 +169,7 @@ public class ConverterProcessing{
 						}
 						lines += line;
 					}
-					video.commands.put("exportSubtitle", lines);
+					commands.put("exportSubtitle", lines);
 					br.close();
 					isr.close();
 					is.close();
@@ -187,7 +189,7 @@ public class ConverterProcessing{
 						lines += line;
 					}
 					System.out.println("Subtitle extracted");
-					video.commands.put("convertSubtitle", lines);
+					commands.put("convertSubtitle", lines);
 					br.close();
 					isr.close();
 					is.close();
@@ -196,17 +198,18 @@ public class ConverterProcessing{
 					SRT2VTT.convert(VideoConvertModule.prop.getProperty("uploadPath")+filename+".srt", outfile);
 					System.out.println("conversion complete");
 					if((new File(VideoConvertModule.prop.getProperty("uploadPath")+filename+".srt")).exists()){
-						out.add(VideoConvertModule.prop.getProperty("uploadPath")+filename);
+						
 					}
 					System.out.println("setting subtitles");
-					video.setSubtitles(out);
+					video.addSubtitle( filename, regexMatcher.group(6), regexMatcher.group(3), commands);
 					System.out.println("All done");
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
 			}
-		} catch (IOException e) {
-			if(SynloadFramework.debug){
-				e.printStackTrace();
-			}
+		} catch (PatternSyntaxException ex) {
+			// Syntax error in the regular expression
 		}
 	}
 	/*public static void getH264(Video video, String mDataLine){

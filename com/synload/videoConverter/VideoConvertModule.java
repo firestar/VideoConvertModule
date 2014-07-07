@@ -123,8 +123,6 @@ public class VideoConvertModule extends Addon {
 			}
 		}else{
 			Users.load();
-			Converter.load();
-			SynloadConverter.load();
 			System.out.println("[VC] Users found!");
 		}
 	}

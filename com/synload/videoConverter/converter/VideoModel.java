@@ -9,14 +9,13 @@ import com.synload.videoConverter.converter.models.Video;
 
 
 public class VideoModel {
-	public String fileName,sourceFile,video,videofile,data,mData,fps,id;
+	public String sourceFile,video,videofile,data,mData,fps,id;
 	public User account= null;
 	public Long sourceSize = (long) 0;
 	public Float duration = (float) 0;
 	
 	public Boolean h264 = false;
 	public VideoModel(Video v){
-		fileName = v.fileName;
 		video = v.video;
 		data = v.data;
 		mData = v.mData;

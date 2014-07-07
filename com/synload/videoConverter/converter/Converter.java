@@ -23,7 +23,7 @@ import com.synload.videoConverter.converter.models.Video;
 public class Converter{
 	public Thread cThread;
 	public ConverterThread processing = null;
-	public static List<Video> queue = new ArrayList<Video>();
+	//public static List<Video> queue = new ArrayList<Video>();
 	public HashMap<String,Object> current = new HashMap<String,Object>();
 	public static Hashtable<String,Video> threadqueue = new Hashtable<String,Video>();
 	public Converter(){
@@ -39,58 +39,5 @@ public class Converter{
 	}
 	public void setcThread(Thread cThread) {
 		this.cThread = cThread;
-	}
-	public static void addQueue(Video value){
-		queue.add(value);	
-		storeQueue();
-	}
-	public static void storeQueue(){
-		/*ObjectMapper mapper = new ObjectMapper()
-			.setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
-			.enableDefaultTypingAsProperty(DefaultTyping.OBJECT_AND_NON_CONCRETE, "class")
-			.enable(SerializationFeature.INDENT_OUTPUT);
-		mapper.registerSubtypes(Video.class);
-		try {
-			ObjectWriter ow = mapper.writerWithType(mapper.getTypeFactory().constructCollectionType(List.class, Video.class));
-			ow.writeValue(new File("queue.json"), queue);
-		} catch (IOException e) {
-			if(SynloadFramework.debug){
-				e.printStackTrace();
-			}
-		}*/
-		FileOutputStream fout;
-		try {
-			fout = new FileOutputStream("queue.json");
-			ObjectOutputStream oos = new ObjectOutputStream(fout);
-			oos.writeObject(queue);
-		} catch (IOException e) {
-			if(SynloadFramework.debug){
-				e.printStackTrace();
-			}
-		}
-	}
-	public static void load(){
-		/*ObjectMapper mapper = new ObjectMapper()
-			.setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
-			.enableDefaultTypingAsProperty(DefaultTyping.OBJECT_AND_NON_CONCRETE, "class")
-			.enable(SerializationFeature.INDENT_OUTPUT);
-		mapper.registerSubtypes(Video.class);
-		try {
-			queue = mapper.reader(mapper.getTypeFactory().constructCollectionType(List.class, Video.class)).readValue(new File("queue.json"));
-		} catch (IOException e) {
-			if(SynloadFramework.debug){
-				e.printStackTrace();
-			}
-		}*/
-		try {
-			//uploadQueue = mapper.reader(mapper.getTypeFactory().constructCollectionType(List.class, Object.class)).readValue(new File("uploadqueue.json"));
-			FileInputStream streamIn = new FileInputStream("queue.json");
-            ObjectInputStream objectinputstream = new ObjectInputStream(streamIn);
-            queue = (List) objectinputstream.readObject();
-		} catch (IOException | ClassNotFoundException e) {
-			if(SynloadFramework.debug){
-				e.printStackTrace();
-			}
-		}
 	}
 }
