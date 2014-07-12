@@ -11,6 +11,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.mysql.jdbc.Statement;
 import com.synload.framework.SynloadFramework;
 import com.synload.framework.users.User;
 import com.synload.videoConverter.VideoConvertModule;
@@ -18,14 +19,18 @@ import com.synload.videoConverter.VideoConvertModule;
 @JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="class")
 public class Task implements Serializable{
 	public String statusURL, uploadURL, cancelURL, preset = "";
+	
+	@JsonIgnore
 	public HashMap<String, String> commands = new HashMap<String, String>();
+	
 	public Long vid, sid, uid, id, ovid = (long) 0;
-	public int complete, status = 0;
-	public Task(Long uid, Long vid, Long sid, Long id, String preset, String statusURL, String uploadURL, String cancelURL){
+	public int complete = 0;
+	public int status = 3;
+	
+	public Task(Long uid, Long vid, Long sid, String preset, String statusURL, String uploadURL, String cancelURL){
 		this.uid = uid;
 		this.vid = vid;
 		this.sid = sid;
-		this.id = id;
 		this.preset = preset;
 		this.statusURL = statusURL;
 		this.uploadURL = uploadURL;
@@ -43,23 +48,23 @@ public class Task implements Serializable{
 			uid = rs.getLong("uid");
 			id = rs.getLong("id");
 			preset = rs.getString("preset");
-			complete = rs.getInt("complate");
+			status = rs.getInt("status");
+			complete = rs.getInt("complete");
 			try {
 				commands = (HashMap<String, String>)VideoConvertModule.stringToObject(rs.getString("commands"));
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			} catch (Exception e) {}
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
 		
 	}
+	
+	@JsonIgnore
 	public void create(){
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"INSERT INTO `tasks` ( `vid`, `sid`, `uid`, `preset`, `uploadURL`, `cancelURL`, `statusURL`, `complete`, `commands` ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ? );"
+				"INSERT INTO `tasks` ( `vid`, `sid`, `uid`, `preset`, `uploadURL`, `cancelURL`, `statusURL`, `complete`, `commands` ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ? );",
+				Statement.RETURN_GENERATED_KEYS
 			);
 			s.setLong(1, vid);
 			s.setLong(2, sid);
@@ -247,18 +252,22 @@ public class Task implements Serializable{
 	}
 	
 	public Video getVideo(){
-		return Video.getById(this.vid);
+		return Video.getByVId(this.vid);
 	}
+	
 	public Subtitle getSubtitle(){
 		return Subtitle.getById(this.sid);
 	}
+	
 	public User getUser(){
 		return User.findUser(this.uid);
 	}
+	
 	public Video getOutput(){
-		return Video.getById(ovid);
+		return Video.getByVId(ovid);
 	}
 	
+	@JsonIgnore
 	public static long lengthNew(){
 		int i = 0;
 		try{
@@ -275,11 +284,13 @@ public class Task implements Serializable{
 		}
 		return i;
 	}
+	
+	@JsonIgnore
 	public static List<Task> getByVideoId(long videoId){
 		List<Task> tasks = new ArrayList<Task>();
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complate`, `commands`, `preset`, `status` FROM `tasks` WHERE `vid`=?"
+				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complete`, `commands`, `preset`, `status` FROM `tasks` WHERE `vid`=?"
 			);
 			s.setLong(1, videoId);
 			ResultSet rs = s.executeQuery();
@@ -294,11 +305,13 @@ public class Task implements Serializable{
 		}
 		return tasks;
 	}
+	
+	@JsonIgnore
 	public static List<Task> getByStatus(int status){
 		List<Task> tasks = new ArrayList<Task>();
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complate`, `commands`, `preset`, `status` FROM `tasks` WHERE `status`=?"
+				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complete`, `commands`, `preset`, `status` FROM `tasks` WHERE `status`=?"
 			);
 			s.setInt(1, status);
 			ResultSet rs = s.executeQuery();
@@ -313,11 +326,100 @@ public class Task implements Serializable{
 		}
 		return tasks;
 	}
+	
+	@JsonIgnore
+	public static long lengthByStatus(int status){
+		try{
+			PreparedStatement s = SynloadFramework.sql.prepareStatement(
+				"SELECT COUNT(`id`) FROM `tasks` WHERE `status`=?"
+			);
+			s.setInt(1, status);
+			ResultSet rs = s.executeQuery();
+			while(rs.next()){
+				long total = rs.getLong("COUNT(`id`)");
+				rs.close();
+				s.close();
+				return total;
+			}
+			rs.close();
+			s.close();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		return (long) 0;
+	}
+	
+	@JsonIgnore
+	public static List<Task> getByUserAndStatus(int status, long uid, int page){
+		List<Task> tasks = new ArrayList<Task>();
+		try{
+			PreparedStatement s = SynloadFramework.sql.prepareStatement(
+				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complete`, `commands`, `preset`, `status` FROM `tasks` WHERE `uid`=? AND `status`=? LIMIT "+(page*25)+",25"
+			);
+			s.setLong(1, uid);
+			s.setInt(2, status);
+			ResultSet rs = s.executeQuery();
+			while(rs.next()){
+				Task tk = new Task(rs);
+				tasks.add(tk);
+			}
+			rs.close();
+			s.close();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		return tasks;
+	}
+	
+	@JsonIgnore
+	public static long lengthByUserAndStatus(int status, long uid){
+		try{
+			PreparedStatement s = SynloadFramework.sql.prepareStatement(
+				"SELECT COUNT(`id`) FROM `tasks` WHERE `uid`=? AND `status`=?"
+			);
+			s.setLong(1, uid);
+			s.setInt(2, status);
+			ResultSet rs = s.executeQuery();
+			while(rs.next()){
+				long total = rs.getLong("COUNT(`id`)");
+				rs.close();
+				s.close();
+				return total;
+			}
+			rs.close();
+			s.close();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		return (long) 0;
+	}
+	
+	@JsonIgnore
+	public static int getByStatusLength(int status){
+		int i = 0;
+		try{
+			PreparedStatement s = SynloadFramework.sql.prepareStatement(
+				"SELECT `id` FROM `tasks` WHERE `status`=?"
+			);
+			s.setInt(1, status);
+			ResultSet rs = s.executeQuery();
+			while(rs.next()){
+				i++;
+			}
+			rs.close();
+			s.close();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		return i;
+	}
+	
+	@JsonIgnore
 	public static List<Task> getByVideoIdStatus(long videoId, int status){
 		List<Task> tasks = new ArrayList<Task>();
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complate`, `commands`, `preset`, `status` FROM `tasks` WHERE `vid`=? AND `status`=?"
+				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complete`, `commands`, `preset`, `status` FROM `tasks` WHERE `vid`=? AND `status`=?"
 			);
 			s.setLong(1, videoId);
 			s.setInt(2, status);
@@ -333,11 +435,13 @@ public class Task implements Serializable{
 		}
 		return tasks;
 	}
+	
+	@JsonIgnore
 	public static List<Task> getNew(){
 		List<Task> tasks = new ArrayList<Task>();
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complate`, `commands`, `preset`, `status` FROM `tasks` WHERE `status`='3'"
+				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complete`, `commands`, `preset`, `status` FROM `tasks` WHERE `status`='3'"
 			);
 			ResultSet rs = s.executeQuery();
 			while(rs.next()){
@@ -351,10 +455,12 @@ public class Task implements Serializable{
 		}
 		return tasks;
 	}
+	
+	@JsonIgnore
 	public static Task getById(long tid){
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complate`, `commands`, `preset`, `status` FROM `tasks` WHERE `id`=?"
+				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complete`, `commands`, `preset`, `status` FROM `tasks` WHERE `id`=?"
 			);
 			s.setLong(1, tid);
 			ResultSet rs = s.executeQuery();
@@ -383,22 +489,19 @@ public class Task implements Serializable{
 	public static List<Task> getTasksConvertComplete(){
 		return Task.getByStatus(1);
 	}
+	
+	@JsonIgnore
 	public static Task getLatest(){
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complate`, `commands`, `preset`, `status` FROM `tasks` WHERE `status`='3'"
+				"SELECT `id`, `uid`, `vid`, `sid`, `ovid`, `uploadURL`, `cancelURL`, `statusURL`, `complete`, `commands`, `preset`, `status` FROM `tasks` WHERE `status`='3'"
 			);
 			ResultSet rs = s.executeQuery();
 			while(rs.next()){
 				Task tk = new Task(rs);
 				rs.close();
 				s.close();
-				s = SynloadFramework.sql.prepareStatement(
-					"UPDATE `tasks` SET `status`='2' WHERE `status`='3' AND `id`=?"
-				);
-				s.setLong(1, tk.id);
-				s.executeQuery().close();
-				s.close();
+				tk.setStatus(2);
 				return tk;
 			}
 			rs.close();

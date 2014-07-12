@@ -21,7 +21,6 @@ import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.impl.client.DefaultHttpClient;
 
 import com.synload.framework.SynloadFramework;
-import com.synload.videoConverter.SynloadConverter;
 import com.synload.videoConverter.converter.Presets;
 import com.synload.videoConverter.converter.models.Video;
 
@@ -31,7 +30,7 @@ public class Uploader implements Runnable{
 	@Override
 	public void run() {
 		while(true){
-			if(SynloadConverter.uploadQueue.size()>0){
+		/*	if(SynloadConverter.uploadQueue.size()>0){
 				Video video = SynloadConverter.uploadQueue.get(0);
 				System.out.println("Uploading converted video!");
 				Hashtable<String,String> tmp = new Hashtable<String,String>();
@@ -66,7 +65,7 @@ public class Uploader implements Runnable{
 				if(SynloadFramework.debug){
 					e.printStackTrace();
 				}
-			}
+			}*/
 		}
 	}
 	public static String postFile(String url, Video video, Hashtable<String,String> paramData) throws Exception {
@@ -78,7 +77,7 @@ public class Uploader implements Runnable{
 	    builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
 	    
 	    if(video!=null){
-		    File file = new File(video.getVideoFile());
+		    File file = new File(video.getSourceFile());
 		    FileBody fb = new FileBody(file);
 		    builder.addPart("movie", fb);  
 	    }
@@ -132,9 +131,6 @@ public class Uploader implements Runnable{
 	        public void writeTo(OutputStream outstream) throws IOException {
 
 	            class ProxyOutputStream extends FilterOutputStream {
-	                /**
-	                 * @author Stephen Colebourne
-	                 */
 
 	                public ProxyOutputStream(OutputStream proxy) {
 	                    super(proxy);    

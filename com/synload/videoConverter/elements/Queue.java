@@ -8,13 +8,14 @@ import com.synload.framework.handlers.Response;
 import com.synload.framework.ws.WSHandler;
 import com.synload.videoConverter.converter.Converter;
 import com.synload.videoConverter.converter.VideoModel;
+import com.synload.videoConverter.converter.models.Task;
 import com.synload.videoConverter.converter.models.Video;
 
 public class Queue extends Response {
-	public List<Object> queue = new ArrayList<Object>();
+	public List<Task> queue = new ArrayList<Task>();
 	public int limit = 25;
 	public int queuePage;
-	public int queueTotal = 0;
+	public long queueTotal = 0;
 	public String listType = "";
 	public Queue(WSHandler user, List<String> templateCache, Integer queuePage, String listType){
 		this.listType = listType;
@@ -27,23 +28,8 @@ public class Queue extends Response {
 			this.queuePage = queuePage;
 			queuePage -= 1;
 			
-			for( Video v: Converter.queue ){
-				if(v.getAccount().getId()==user.getUser().getId()){
-					queue.add(new VideoModel(v));
-				}else{
-					queue.add(v.getId());
-				}
-			}
-			queueTotal = queue.size();
-			if(queue.size()>0){
-				if(queue.size()>(limit*queuePage)+limit && queue.size()>(limit*queuePage)){
-					queue = queue.subList( (int) (limit*queuePage), (int)(limit*queuePage)+limit );
-				}else if(queue.size()<(limit*queuePage)+limit && queue.size()>(limit*queuePage)){
-					queue = queue.subList( (int) (limit*queuePage), queue.size() );
-				}else{
-					queue = new ArrayList<Object>();
-				}
-			}
+			queue = Task.getByUserAndStatus(3, user.getUser().getId(), queuePage);
+			queueTotal = Task.lengthByUserAndStatus( 3, user.getUser().getId());
 		}
 		this.setParent("#actionId");
 		this.setParentTemplate("panel");

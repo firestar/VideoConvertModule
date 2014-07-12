@@ -27,10 +27,10 @@ import com.synload.framework.SynloadFramework;
 import com.synload.framework.http.HTTPRouting;
 import com.synload.framework.users.Authentication;
 import com.synload.framework.users.User;
-import com.synload.videoConverter.SynloadConverter;
 import com.synload.videoConverter.Users;
 import com.synload.videoConverter.VideoConvertModule;
 import com.synload.videoConverter.converter.Converter;
+import com.synload.videoConverter.converter.models.Task;
 import com.synload.videoConverter.converter.models.Video;
 
 public class HTTPListener {
@@ -62,13 +62,7 @@ public class HTTPListener {
         		if(account.passwordMatch(request.getParameter("password"))){
         			HashMap<String, Integer> tmp = Users.getLimits().get(account.getUsername().toLowerCase());
 					if(tmp.get("queue")>0){
-						int i = 0;
-						List<Video> queueTemp = new ArrayList<Video>(Converter.queue);
-						for(Video v:queueTemp){
-							if(v.getAccount().equals(account)){
-								i++;
-							}
-						}
+						long i = Task.lengthByUserAndStatus(3, account.getId());
 						if(tmp.get("queue")<=i){
 							response.getWriter().println("{\"e\":\"Too many videos in queue!\"}");
 							for(Part part :request.getParts()){
@@ -100,19 +94,20 @@ public class HTTPListener {
 									}
 								}
 								Video d = new Video (
-									part.getSubmittedFileName(),
 									part.getSize(),
 									part,
 									account
 								);
-								/*if(baseRequest.getParameterMap().containsKey("status"))
-									d.setStatusURL(request.getParameter("status"));
+								String statusURL = "", uploadURL = "", cancelURL = "";
+								if(baseRequest.getParameterMap().containsKey("status"))
+									statusURL = request.getParameter("status");
 								if(baseRequest.getParameterMap().containsKey("cancel"))
-									d.setCancelURL(request.getParameter("cancel"));
+									cancelURL = request.getParameter("cancel");
 								if(baseRequest.getParameterMap().containsKey("upload"))
-									d.setUploadURL(request.getParameter("upload"));*/
-								System.out.println("file building!");
-								d.buildVideo();
+									uploadURL = request.getParameter("upload");
+								
+								d.newTask(account.getId(), Long.valueOf(request.getParameter("sid")), request.getParameter("preset"), statusURL, uploadURL, cancelURL);
+								
 								entry.put("file", part.getSubmittedFileName());
 								entry.put("id", d.getId());
 								entries.add(entry);
@@ -162,13 +157,7 @@ public class HTTPListener {
         		if(account.getId() == User.findVerifySession(request.getParameter("session")).getId()){
         			HashMap<String, Integer> tmp = Users.getLimits().get(account.getUsername().toLowerCase());
 					if(tmp.get("queue")>0){
-						int i = 0;
-						List<Video> queueTemp = new ArrayList<Video>(Converter.queue);
-						for(Video v:queueTemp){
-							if(v.getAccount().equals(account)){
-								i++;
-							}
-						}
+						long i = Task.lengthByUserAndStatus(3, account.getId());
 						if(tmp.get("queue")<=i){
 							response.getWriter().println("{\"e\":\"Too many videos in queue!\"}");
 							for(Part part :request.getParts()){
@@ -200,19 +189,21 @@ public class HTTPListener {
 									}
 								}
 								Video d = new Video (
-									part.getSubmittedFileName(),
 									part.getSize(),
 									part,
 									account
 								);
-								/*if(baseRequest.getParameterMap().containsKey("status"))
-									d.setStatusURL(request.getParameter("status"));
+								
+								/*String statusURL = "", uploadURL = "", cancelURL = "";
+								if(baseRequest.getParameterMap().containsKey("status"))
+									statusURL = request.getParameter("status");
 								if(baseRequest.getParameterMap().containsKey("cancel"))
-									d.setCancelURL(request.getParameter("cancel"));
+									cancelURL = request.getParameter("cancel");
 								if(baseRequest.getParameterMap().containsKey("upload"))
-									d.setUploadURL(request.getParameter("upload"));*/
-								System.out.println("file building!");
-								d.buildVideo();
+									uploadURL = request.getParameter("upload");
+								
+								d.newTask(account.getId(), Long.valueOf(request.getParameter("sid")), request.getParameter("preset"), statusURL, uploadURL, cancelURL);*/
+								
 								entry.put("file", part.getSubmittedFileName());
 								entry.put("id", d.getId());
 								entries.add(entry);
@@ -250,14 +241,14 @@ public class HTTPListener {
 			if(account!=null){
 		        Video v = this.getVideoById(uRI[2]);
 		        if(v.getAccount().getId()==account.getId()){
-		        	HTTPRouting.openFile( v.getSourceFile(), response, baseRequest);
+		        	HTTPRouting.openFile( VideoConvertModule.prop.getProperty("uploadPath")+v.getSourceFile(), response, baseRequest);
 		        }
 			}
 		}
 	}
 	public void sendThumbnail(String target, Request baseRequest, HttpServletRequest request, 
 			HttpServletResponse response, String[] uRI) throws IOException{
-		if(uRI.length>=4){
+		if(uRI.length>=3){
 			User account = User.findVerifySession(uRI[3]);
 	        Video v = this.getVideoById(uRI[2]);
 	        if(v!=null){
@@ -335,14 +326,14 @@ public class HTTPListener {
 		response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
-		if(SynloadConverter.uploadQueue.size()==0){
+		if(Task.lengthByStatus(1)==0){
 			response.getWriter().println("{\"e\":\"none\"}");
 			return;
 		}
 		ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
 		List<String> vlist = new ArrayList<String>();
-		for(Video v :SynloadConverter.uploadQueue){
-			vlist.add(v.getId());
+		for(Task v :Task.getByStatus(1)){
+			vlist.add(v.getVideo().getId());
 		}
 		String json = ow.writeValueAsString(vlist);
 		response.getWriter().println(json);
@@ -352,13 +343,13 @@ public class HTTPListener {
 		response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
-		if(SynloadConverter.history.size()==0){
+		if(Task.lengthByStatus(0)==0){
 			response.getWriter().println("{\"e\":\"none\"}");
 			return;
 		}
 		List<String> vlist = new ArrayList<String>();
-		for(Video v :SynloadConverter.history){
-			vlist.add(v.getId());
+		for(Task v :Task.getByStatus(1)){
+			vlist.add(v.getVideo().getId());
 		}
 		ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
 		String json = ow.writeValueAsString(vlist);
@@ -369,40 +360,16 @@ public class HTTPListener {
 		response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
-		if(SynloadConverter.history.size()==0){
-			response.getWriter().println("{\"e\":\"none\"}");
-			return;
-		}
 		if(uRI.length<4){
 			response.getWriter().println("{\"e\":\"improper request\"}");
 			return;
 		}
 		User account = User.findVerifySession(uRI[3]);
 		if(account!=null){
-			for(Video v:SynloadConverter.history){
-				if(v.getId().equals(uRI[2]) && v.getAccount().getId()==account.getId()){
-					ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-					String json = ow.writeValueAsString(v);
-					response.getWriter().println(json);
-					return;
-				}
-			}
-			for(Video v:SynloadConverter.uploadQueue){
-				if(v.getId().equals(uRI[2]) && v.getAccount().getId()==account.getId()){
-					ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-					String json = ow.writeValueAsString(v);
-					response.getWriter().println(json);
-					return;
-				}
-			}
-			for(Video v:Converter.queue){
-				if(v.getId().equals(uRI[2]) && v.getAccount().getId()==account.getId()){
-					ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-					String json = ow.writeValueAsString(v);
-					response.getWriter().println(json);
-					return;
-				}
-			}
+			ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+			String json = ow.writeValueAsString(Video.getByUUID(uRI[2]));
+			response.getWriter().println(json);
+			return;
 		}else{
 			response.getWriter().println("{\"e\":\"Authentication failed!\"}");
 		}
@@ -412,13 +379,13 @@ public class HTTPListener {
 		response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
-		if(Converter.queue.size()==0){
+		if(Task.lengthByStatus(3)==0){
 			response.getWriter().println("{\"e\":\"none\"}");
 			return;
 		}
 		List<String> vlist = new ArrayList<String>();
-		for(Video v :Converter.queue){
-			vlist.add(v.getId());
+		for(Task v :Task.getByStatus(3)){
+			vlist.add(v.getVideo().getId());
 		}
 		ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
 		String json = ow.writeValueAsString(vlist);
@@ -492,6 +459,6 @@ public class HTTPListener {
 	}
 	
 	public Video getVideoById(String id){
-		return Video.getById(Long.valueOf(id));
+		return Video.getById(id);
 	}
 }

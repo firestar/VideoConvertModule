@@ -74,6 +74,10 @@ public class VideoConvertModule extends Addon {
 		SynloadFramework.registerElement(new WSRequest("panel","get"), Page.class, "getPanel", flags);
 		SynloadFramework.registerElement(new WSRequest("status","get"), Page.class, "getStatus", flags);
 		SynloadFramework.registerElement(new WSRequest("history","get"), Page.class, "getHistory", flags);
+		SynloadFramework.registerElement(new WSRequest("videos","get"), Page.class, "getVideos", flags);
+		SynloadFramework.registerElement(new WSRequest("video","get"), Page.class, "getVideo", flags);
+		SynloadFramework.registerElement(new WSRequest("createtask","get"), Page.class, "getCreateTask", flags);
+		SynloadFramework.registerElement(new WSRequest("task","create"), Page.class, "createTask", flags);
 		SynloadFramework.registerElement(new WSRequest("queue","get"), Page.class, "getQueue", flags);
 		SynloadFramework.registerElement(new WSRequest("upload","get"), Page.class, "getUpload", flags);
 		
@@ -86,11 +90,15 @@ public class VideoConvertModule extends Addon {
 			if(OS.indexOf("win") >= 0){
 				prop.setProperty("os", "Windows");
 				prop.setProperty("ffmpeg", "ffmpeg.exe");
+				prop.setProperty("avconv", "avconv.exe");
+				prop.setProperty("ffprobe", "ffprobe.exe");
 				prop.setProperty("mkvextract", "mkvextract.exe");
 				prop.setProperty("mkvmerge", "mkvmerge.exe");
 			}else{
 				prop.setProperty("os", "Linux");
 				prop.setProperty("ffmpeg", "ffmpeg");
+				prop.setProperty("avconv", "avconv");
+				prop.setProperty("ffprobe", "ffprobe");
 				prop.setProperty("mkvextract", "mkvextract");
 				prop.setProperty("mkvmerge", "mkvmerge");
 			}

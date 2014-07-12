@@ -21,27 +21,14 @@ import com.synload.videoConverter.converter.models.Video;
 
 public class ConverterProcessing{
 	public static String getFPS(Video video){
-		String ResultString="1";
-		Pattern regex = Pattern.compile("([0-9.]+) fps");
-		Matcher regexMatcher = regex.matcher(video.getData());
-		if (regexMatcher.find()) {
-			ResultString = regexMatcher.group(1);
-		}
-		if(ResultString.equals("1")){
-			regex = Pattern.compile("-> ([0-9.]+)");
-			regexMatcher = regex.matcher(video.getData());
-			if (regexMatcher.find()) {
-				ResultString = regexMatcher.group(1);
+		for( int i = 0; i < video.getData().get("streams").size() ; i++ ){
+			if(video.getData().get("streams").get(i).get("codec_type").asText().equalsIgnoreCase("video")){
+				String[] fr = video.getData().get("streams").get(i).get("avg_frame_rate").asText().split("/");
+				double v = Double.valueOf(fr[0])/Double.valueOf(fr[1]);
+				return String.valueOf(v);
 			}
 		}
-		if(ResultString.equals("1")){
-			regex = Pattern.compile("([0-9.]+) tbr");
-			regexMatcher = regex.matcher(video.getData());
-			if (regexMatcher.find()) {
-				ResultString = regexMatcher.group(1);
-			}
-		}
-		return ResultString;
+		return "";
 	}
 	public static String getFPS(String line){
 		String ResultString="1";
@@ -73,20 +60,8 @@ public class ConverterProcessing{
 		}
 		return ResultString;
 	}
-	public static float getDuration(Video video){
-		float totalPlay = 0;
-		try {
-			Pattern regex = Pattern.compile("Duration: ([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2}).([0-9]{1,2})");
-			Matcher regexMatcher = regex.matcher(video.getData());
-			while (regexMatcher.find()) {
-				totalPlay = ((Integer.valueOf(regexMatcher.group(1))*60)*60)+(Integer.valueOf(regexMatcher.group(2))*60)+(Integer.valueOf(regexMatcher.group(3)));
-			}
-		} catch (PatternSyntaxException e) {
-			if(SynloadFramework.debug){
-				e.printStackTrace();
-			}
-		}
-		return totalPlay;
+	public static double getDuration(Video video){
+		return video.getData().get("format").get("duration").asDouble();
 	}
 	public static String getOutput(String line){
 		try {
@@ -147,15 +122,13 @@ public class ConverterProcessing{
 	}
 	public static void extractSubs(Video video){
 		List<String> tracks = new ArrayList<String>();
-		try {
-			Pattern regex = Pattern.compile("Stream #([0-9]+)\\.([0-9]+)(?:\\([a-z]+\\)|): Subtitle: (.*?)\r\n    Metadata:\r\n      title([ ]+): (.*?)\r");
-			Matcher regexMatcher = regex.matcher(video.getData());
-			while (regexMatcher.find()) {
+		for( int i = 0; i < video.getData().get("streams").size() ; i++ ){
+			if(video.getData().get("streams").get(i).get("codec_type").asText().equalsIgnoreCase("subtitle")){
 				try {
 					HashMap<String, String> commands = new HashMap<String,String>();
 					System.out.println("Found Subtitles");
 					String filename = video.randomString();
-					String cmd = VideoConvertModule.prop.getProperty("mkvextract")+" tracks "+VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()+" "+regexMatcher.group(2)+":"+VideoConvertModule.prop.getProperty("uploadPath")+filename+".ass";
+					String cmd = VideoConvertModule.prop.getProperty("mkvextract")+" tracks "+VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()+" "+video.getData().get("streams").get(i).get("index")+":"+VideoConvertModule.prop.getProperty("uploadPath")+filename+".ass";
 					ProcessBuilder builder = new ProcessBuilder(cmd.split(" "));
 					builder.redirectErrorStream(true);
 					Process pr = builder.start();
@@ -170,6 +143,26 @@ public class ConverterProcessing{
 						lines += line;
 					}
 					commands.put("exportSubtitle", lines);
+					br.close();
+					isr.close();
+					is.close();
+					System.out.println("Subtitle extracted");
+					cmd = VideoConvertModule.prop.getProperty("ffmpeg")+" -i "+VideoConvertModule.prop.getProperty("uploadPath")+filename+".ass "+VideoConvertModule.prop.getProperty("uploadPath")+filename+".vtt";
+					builder = new ProcessBuilder(cmd.split(" "));
+					builder.redirectErrorStream(true);
+					pr = builder.start();
+					is = pr.getInputStream();
+			        isr = new InputStreamReader(is);
+			        br = new BufferedReader(isr);
+			        lines = "";
+			        line = "";
+					while ((line = br.readLine()) != null) {
+						if(SynloadFramework.debug){
+							System.out.println(line);
+						}
+						lines += line;
+					}
+					commands.put("vttSubtitle", lines);
 					br.close();
 					isr.close();
 					is.close();
@@ -188,28 +181,31 @@ public class ConverterProcessing{
 						}
 						lines += line;
 					}
-					System.out.println("Subtitle extracted");
-					commands.put("convertSubtitle", lines);
+					
+					commands.put("srtSubtitle", lines);
 					br.close();
 					isr.close();
 					is.close();
-					System.out.println("Converting subtitle");
-					OutputStream outfile = new FileOutputStream(new File(VideoConvertModule.prop.getProperty("uploadPath")+filename+".vtt"));
-					SRT2VTT.convert(VideoConvertModule.prop.getProperty("uploadPath")+filename+".srt", outfile);
-					System.out.println("conversion complete");
-					if((new File(VideoConvertModule.prop.getProperty("uploadPath")+filename+".srt")).exists()){
-						
+					System.out.println("Converted subtitle");
+					//OutputStream outfile = new FileOutputStream(new File(VideoConvertModule.prop.getProperty("uploadPath")+filename+".srt"));
+					//SRT2VTT.convert(VideoConvertModule.prop.getProperty("uploadPath")+filename+".srt", outfile);
+					if(video.getData().get("streams").get(i).has("tags")){
+						video.addSubtitle( 
+							filename, 
+							((video.getData().get("streams").get(i).get("tags").has("title"))?video.getData().get("streams").get(i).get("tags").get("title").asText():""), 
+							((video.getData().get("streams").get(i).get("tags").has("language"))?video.getData().get("streams").get(i).get("tags").get("language").asText():""), 
+							commands
+						);
+					}else{
+						video.addSubtitle( filename, "", "default", commands);
 					}
-					System.out.println("setting subtitles");
-					video.addSubtitle( filename, regexMatcher.group(6), regexMatcher.group(3), commands);
-					System.out.println("All done");
+					
+					
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
-		} catch (PatternSyntaxException ex) {
-			// Syntax error in the regular expression
 		}
 	}
 	/*public static void getH264(Video video, String mDataLine){
@@ -228,16 +224,16 @@ public class ConverterProcessing{
 			}
 		}
 	}*/
-	public static void removeSubs(Video video) throws IOException{
+	public static void removeSubs(Video video) throws IOException, InterruptedException{
 		String cmd = VideoConvertModule.prop.getProperty("ffmpeg")+" -i "+VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()+" -sn -vcodec copy -acodec copy "+VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()+".mkv";
-		ProcessBuilder builder = new ProcessBuilder(cmd.split(" "));
-		builder.redirectErrorStream(true);
-		Process pr = builder.start();
-		InputStream is = pr.getInputStream();
+		System.out.println(VideoConvertModule.prop.getProperty("ffmpeg")+" -i "+VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()+" -sn -vcodec copy -acodec copy "+VideoConvertModule.prop.getProperty("uploadPath")+video.getSourceFile()+".mkv");
+		Process p = Runtime.getRuntime().exec(cmd);
+		p.waitFor();
+		InputStream is = p.getErrorStream();
         InputStreamReader isr = new InputStreamReader(is);
         BufferedReader br = new BufferedReader(isr);
         String lines="",line="";
-		while ((lines = br.readLine()) != null) {
+		while ((line = br.readLine()) != null) {
 			if(SynloadFramework.debug){
 				System.out.println(line);
 			}
@@ -260,6 +256,26 @@ public class ConverterProcessing{
 	        String line;
 	        while ((line = br.readLine()) != null) {
 	        	output+=line;
+	        }
+	    }catch (Exception ex) {
+	    	if(SynloadFramework.debug){
+	    		ex.printStackTrace();
+	    	}
+	    }
+	    return output;
+	}
+	public static String cmdExecOut(String cmdLine) {
+	    String output = "";
+	    try {
+	        Process p = Runtime.getRuntime().exec(cmdLine);
+	        BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+	        String line;
+	        while ((line = br.readLine()) != null) {
+	        	output+=line;
+	        }
+	        br = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+	        while ((line = br.readLine()) != null) {
+	        	System.out.println(line);
 	        }
 	    }catch (Exception ex) {
 	    	if(SynloadFramework.debug){

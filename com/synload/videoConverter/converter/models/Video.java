@@ -21,6 +21,10 @@ import org.apache.commons.io.FileUtils;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mysql.jdbc.Statement;
 import com.synload.framework.SynloadFramework;
 import com.synload.framework.users.User;
 import com.synload.videoConverter.VideoConvertModule;
@@ -29,26 +33,46 @@ import com.synload.videoConverter.converter.ConverterProcessing;
 
 @JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="class")
 public class Video implements Serializable{
-	public String sourceFile,video,data,mData,fps,id;
+	public String sourceFile,video,fps,id;
+	public JsonNode data = null;
 	public User account = null;
 	//public List<String> convertString = new ArrayList<String>();
 	public Long sourceSize, vid = (long) 0;
+	
+	@JsonIgnore
 	public HashMap<String, String> commands = new HashMap<String, String>();
-	public Float duration = (float) 0;
+	
+	public double duration = (double) 0;
+	
 	@JsonIgnore
 	private Part part = null;
+	
 	public Video(){}
 	
 	public Video(String sourceFile, User user){
 		this.account = user;
 		String filename = randomString()+".video";
 		try {
-			FileUtils.moveFile(new File(this.getSourceFile()), new File(VideoConvertModule.prop.getProperty("uploadPath")+filename));
 			this.sourceFile = filename;
 			this.sourceSize = (new File(sourceFile)).length();
+			FileUtils.moveFile(new File(sourceFile), new File(VideoConvertModule.prop.getProperty("uploadPath")+filename));
 			this.id = this.randomString();
-			this.buildVideo();
+			try {
+				this.prepVideo();
+			} catch (JsonProcessingException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 			this.create();
+			ConverterProcessing.extractSubs(this);
+			try {
+				if(this.getSubtitles().size()>0){
+					ConverterProcessing.removeSubs(this);
+				}
+			} catch (IOException | InterruptedException e) {
+				e.printStackTrace();
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -61,6 +85,14 @@ public class Video implements Serializable{
 		this.id = this.randomString();
 		this.buildVideo();
 		this.create();
+		ConverterProcessing.extractSubs(this);
+		try {
+			if(this.getSubtitles().size()>0){
+				ConverterProcessing.removeSubs(this);
+			}
+		} catch (IOException | InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 	public Video(ResultSet rs){
 		try {
@@ -69,15 +101,12 @@ public class Video implements Serializable{
 			id = rs.getString("id");
 			sourceFile = rs.getString("source_file");
 			sourceSize = rs.getLong("source_size");
+			duration = rs.getDouble("duration");
 			fps = rs.getString("fps");
-			data = rs.getString("data");
+			//data = rs.getString("data");
 			try {
 				commands = (HashMap<String, String>)VideoConvertModule.stringToObject(rs.getString("commands"));
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			} catch (Exception e) {}
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -86,20 +115,23 @@ public class Video implements Serializable{
 	public void create(){
 			try{
 				PreparedStatement s = SynloadFramework.sql.prepareStatement(
-					"INSERT INTO `videos` ( `id`, `data`, `fps`, `source_file`, `source_size`, `uid`, `commands` ) VALUES ( ?, ?, ?, ?, ?, ?, ? );"
+					"INSERT INTO `videos` ( `id`, `data`, `fps`, `source_file`, `source_size`, `uid`, `commands`, `duration` ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ? );",
+					Statement.RETURN_GENERATED_KEYS
 				);
 				s.setString(1, id);
-				s.setString(2, data);
+				s.setString(2, data.toString());
 				s.setString(3, fps);
 				s.setString(4, sourceFile);
 				s.setLong(5, sourceSize);
 				s.setLong(6, account.getId());
 				s.setString(7, VideoConvertModule.objectToString(commands));
+				s.setDouble(8, duration);
 				s.execute();
 				ResultSet keys = s.getGeneratedKeys();
 				if(keys.next()){
 					vid = keys.getLong(1);
 				}
+				keys.close();
 			}catch(Exception e){
 				e.printStackTrace();
 			}
@@ -124,6 +156,17 @@ public class Video implements Serializable{
 	}
 
 	public void setSourceSize(Long sourceSize) {
+		try{
+			PreparedStatement s = SynloadFramework.sql.prepareStatement(
+				"UPDATE `videos` SET `source_size`=? WHERE `vid`=?"
+			);
+			s.setLong(1, sourceSize);
+			s.setLong(2, this.getVid());
+			s.execute();
+			s.close();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 		this.sourceSize = sourceSize;
 	}
 
@@ -135,15 +178,6 @@ public class Video implements Serializable{
 		this.id = id;
 	}
 	
-	public String getVideo(){
-		return video;
-	}
-	
-	public long getSize(){
-		return sourceSize;
-	}
-	
-	
 	public String getSourceFile() {
 		return sourceFile;
 	}
@@ -151,35 +185,28 @@ public class Video implements Serializable{
 	public void setSourceFile(String sourceFile) {
 		this.sourceFile = sourceFile;
 	}
+	
+	
+	public double getDuration(){
+		return duration;
+	}
 
-	public String getData(){
+	public JsonNode getData(){
 		return data;
 	}
 	
-	
-	public float getDuration(){
-		return duration;
-	}
-	
-	public String getMData(){
-		return mData;
-	}
-	
-	public void setMData(String mkvMergeData){
-		mData = mkvMergeData;
-	}
-	
-	public void setFPS(String framesPerSecond){
-		fps = framesPerSecond;
-	}
-	
-	
-	
-	public String getFps() {
-		return fps;
-	}
-
-	public void setFps(String fps) {
+	public void setFPS(String fps) {
+		try{
+			PreparedStatement s = SynloadFramework.sql.prepareStatement(
+				"UPDATE `videos` SET `fps`=? WHERE `vid`=?"
+			);
+			s.setString(1, fps);
+			s.setLong(2, this.getVid());
+			s.execute();
+			s.close();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 		this.fps = fps;
 	}
 
@@ -191,7 +218,18 @@ public class Video implements Serializable{
 		this.vid = vid;
 	}
 
-	public void setDuration(Float duration) {
+	public void setDuration(Double duration) {
+		try{
+			PreparedStatement s = SynloadFramework.sql.prepareStatement(
+				"UPDATE `videos` SET `duration`=? WHERE `vid`=?"
+			);
+			s.setDouble(1, duration);
+			s.setLong(2, this.getVid());
+			s.execute();
+			s.close();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 		this.duration = duration;
 	}
 
@@ -278,22 +316,29 @@ public class Video implements Serializable{
 				e.printStackTrace();
 			}
 		}
-		this.prepVideo();
+		try {
+			this.prepVideo();
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
-	public void prepVideo(){
-		this.data = ConverterProcessing.cmdExec(VideoConvertModule.prop.getProperty("ffmpeg")+" -i "+VideoConvertModule.prop.getProperty("uploadPath")+this.getSourceFile());
+	public void prepVideo() throws JsonProcessingException, IOException{
+		ObjectMapper m = new ObjectMapper();
+		String dataString = ConverterProcessing.cmdExecOut(VideoConvertModule.prop.getProperty("ffprobe")+" -v quiet -print_format json -show_format -show_streams "+VideoConvertModule.prop.getProperty("uploadPath")+this.getSourceFile());
+		this.data = m.readTree( dataString );
 		this.video = this.randomString();
 		this.duration = ConverterProcessing.getDuration(this);
 		this.fps = ConverterProcessing.getFPS(this);
-		ConverterProcessing.extractSubs(this);
 		this.sourceSize = (new File(VideoConvertModule.prop.getProperty("uploadPath")+this.getSourceFile())).length();
 	}
 	
 	@JsonIgnore
-	public static Video getById(long videoId){
+	public static Video getByVId(long videoId){
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"SELECT `id`, `data`, `fps`, `source_file`, `source_size`, `uid`, `commands`, `vid` FROM `tasks` WHERE `vid`=?"
+				"SELECT `id`, `data`, `fps`, `source_file`, `source_size`, `uid`, `commands`, `vid`, `duration` FROM `videos` WHERE `vid`=?"
 			);
 			s.setLong(1, videoId);
 			ResultSet rs = s.executeQuery();
@@ -313,21 +358,76 @@ public class Video implements Serializable{
 	}
 	
 	@JsonIgnore
-	public static long lengthAll(){
-		int i = 0;
+	public static Video getById(String videoId){
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-					"SELECT `id` FROM `videos`"
+				"SELECT `id`, `data`, `fps`, `source_file`, `source_size`, `uid`, `commands`, `vid`, `duration` FROM `videos` WHERE `id`=?"
+			);
+			s.setString(1, videoId);
+			ResultSet rs = s.executeQuery();
+			while(rs.next()){
+				Video v = new Video(rs);
+				rs.close();
+				s.close();
+				return v;
+			}
+			rs.close();
+			s.close();
+			return null;
+		}catch(Exception e){
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	@JsonIgnore
+	public Task newTask(long uid, long sid, String preset, String statusURL, String uploadURL, String cancelURL){
+		return new Task( uid, this.getVid(), sid, preset, statusURL, uploadURL, cancelURL);
+	}
+	
+	@JsonIgnore
+	public static Video getByUUID(String videoUUID){
+		try{
+			PreparedStatement s = SynloadFramework.sql.prepareStatement(
+				"SELECT `id`, `data`, `fps`, `source_file`, `source_size`, `uid`, `commands`, `vid`, `duration` FROM `tasks` WHERE `id`=?"
+			);
+			s.setString(1, videoUUID);
+			ResultSet rs = s.executeQuery();
+			while(rs.next()){
+				Video v = new Video(rs);
+				rs.close();
+				s.close();
+				return v;
+			}
+			rs.close();
+			s.close();
+			return null;
+		}catch(Exception e){
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	@JsonIgnore
+	public static long lengthAll(){
+		try{
+			PreparedStatement s = SynloadFramework.sql.prepareStatement(
+					"SELECT COUNT(`id`) FROM `videos`"
 			);
 			ResultSet rs = s.executeQuery();
 			while(rs.next()){
-				i++;
+				long total = rs.getLong("COUNT(`id`)");
+				rs.close();
+				s.close();
+				return total;
 			}
+			rs.close();
+			s.close();
 		}catch(Exception e){
 			e.printStackTrace();
 			return 0;
 		}
-		return i;
+		return 0;
 	}
 	
 	@JsonIgnore
@@ -335,13 +435,18 @@ public class Video implements Serializable{
 		int i = 0;
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-					"SELECT `id` FROM `videos` WHERE `uid`=?"
+					"SELECT COUNT(`id`) FROM `videos` WHERE `uid`=?"
 			);
 			s.setLong(1, uid);
 			ResultSet rs = s.executeQuery();
 			while(rs.next()){
-				i++;
+				long total = rs.getLong("COUNT(`id`)");
+				rs.close();
+				s.close();
+				return total;
 			}
+			rs.close();
+			s.close();
 		}catch(Exception e){
 			e.printStackTrace();
 			return 0;
@@ -354,7 +459,7 @@ public class Video implements Serializable{
 		List<Video> vids = new ArrayList<Video>();
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"SELECT `id`, `data`, `fps`, `source_file`, `source_size`, `uid`, `commands`, `vid` FROM `videos` LIMIT "+(page*25)+", 25"
+				"SELECT `id`, `data`, `fps`, `source_file`, `source_size`, `uid`, `commands`, `vid`, `duration` FROM `videos` LIMIT "+(page*25)+", 25"
 			);
 			ResultSet rs = s.executeQuery();
 			while(rs.next()){
@@ -374,7 +479,7 @@ public class Video implements Serializable{
 		List<Video> vids = new ArrayList<Video>();
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"SELECT `id`, `data`, `fps`, `source_file`, `source_size`, `uid`, `commands`, `vid` FROM `videos` WHERE `uid`=? LIMIT "+(page*25)+", 25"
+				"SELECT `id`, `data`, `fps`, `source_file`, `source_size`, `uid`, `commands`, `vid`, `duration` FROM `videos` WHERE `uid`=? LIMIT "+(page*25)+", 25"
 			);
 			s.setLong(1, uid);
 			ResultSet rs = s.executeQuery();

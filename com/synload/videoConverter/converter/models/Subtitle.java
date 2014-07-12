@@ -8,13 +8,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.mysql.jdbc.Statement;
 import com.synload.framework.SynloadFramework;
 import com.synload.videoConverter.VideoConvertModule;
 
+@JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="class")
 public class Subtitle {
 	public String fileName, title, language = "";
 	public Long sid, vid = (long) 0;
+	
+	@JsonIgnore
 	public HashMap<String, String> commands = new HashMap<String, String>();
+	
 	public Subtitle(ResultSet rs){
 		try {
 			fileName = rs.getString("filename");
@@ -44,7 +51,8 @@ public class Subtitle {
 	public void create(){
 		try{
 			PreparedStatement s = SynloadFramework.sql.prepareStatement(
-				"INSERT INTO `subtitles` ( `filename`, `vid`, `language`, `title`, `commands` ) VALUES ( ?, ?, ?, ?, ? );"
+				"INSERT INTO `subtitles` ( `filename`, `vid`, `language`, `title`, `commands` ) VALUES ( ?, ?, ?, ?, ? );",
+				Statement.RETURN_GENERATED_KEYS
 			);
 			s.setString(1, fileName);
 			s.setLong(2, vid);
