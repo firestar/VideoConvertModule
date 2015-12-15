@@ -14,6 +14,9 @@ public class VP84K extends Preset {
 		" -threads 8 -r "+
 		(getVideoStream(video).avg_frame_rate.getNumerator()/getVideoStream(video).avg_frame_rate.getDenominator())+
 		" -vcodec vp8 -acodec libvorbis -ac 2 -maxrate 23000k -b:v 20000k -b:a 196k -ar 44100 -s 3840x2160 "+
-		output+".webm");
+		output+".webm",
+		output,
+		".webm");
+		this.setName("vp8_4k");
 	}
 }

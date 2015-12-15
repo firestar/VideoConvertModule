@@ -11,11 +11,13 @@ import com.synload.converter.Converter;
 import com.synload.converter.presets.H264;
 import com.synload.converter.presets.H264480;
 import com.synload.converter.presets.H265;
+import com.synload.converter.presets.H265480;
 import com.synload.converter.presets.H2654K;
 import com.synload.converter.presets.VP8;
 import com.synload.converter.presets.VP8480;
 import com.synload.converter.presets.VP84K;
 import com.synload.converter.presets.VP9;
+import com.synload.converter.presets.VP9480;
 import com.synload.converter.presets.VP94K;
 
 import net.bramp.ffmpeg.probe.FFmpegProbeResult;
@@ -24,8 +26,17 @@ import net.bramp.ffmpeg.probe.FFmpegStream.CodecType;
 
 public class Preset{
 	private String cmd = "";
-	public Preset(String cmd){
+	private String outputFile = "";
+	private String name;
+	public Preset(String cmd, String output, String ext){
 		this.cmd = cmd;
+		this.outputFile = output+ext;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
 	}
 	public String getCmd() {
 		return cmd;
@@ -77,6 +88,8 @@ public class Preset{
 				return (new VP8(video, source, output, extra)).getCmd();
 			case "vp8_4k":
 				return (new VP84K(video, source, output, extra)).getCmd();
+			case "vp9_480":
+				return (new VP9480(video, source, output, extra)).getCmd();
 			case "vp9_1080":
 				return (new VP9(video, source, output, extra)).getCmd();
 			case "vp9_4k":
@@ -87,6 +100,8 @@ public class Preset{
 				return (new H264(video, source, output, extra)).getCmd();
 			case "h265_1080":
 				return (new H265(video, source, output, extra)).getCmd();
+			case "h265_480":
+				return (new H265480(video, source, output, extra)).getCmd();
 			case "h265_4k":
 				return (new H2654K(video, source, output, extra)).getCmd();
 		}
@@ -100,6 +115,12 @@ public class Preset{
 		br.close();
 		isr.close();
 		return commandify(video, source, output, extra, out);
+	}
+	public String getOutputFile() {
+		return outputFile;
+	}
+	public void setOutputFile(String outputFile) {
+		this.outputFile = outputFile;
 	}
 	
 }

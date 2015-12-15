@@ -14,6 +14,10 @@ public class VP8 extends Preset {
 		" -threads 8 -r "+
 		(getVideoStream(video).avg_frame_rate.getNumerator()/getVideoStream(video).avg_frame_rate.getDenominator())+
 		" -vcodec vp8 -acodec libvorbis -ac 2 -maxrate 3000k -b:v 5000k -b:a 196k -sn -ar 44100 -s 1920x1080 "+
-		output+".webm");
+		output+"_vp8_1080.webm",
+		output,
+		"_vp8_1080.webm");
+		this.setName("vp8_1080");
 	}
+	
 }
